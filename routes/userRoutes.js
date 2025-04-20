@@ -50,7 +50,7 @@ async function sendOtpEmail(email, otp) {
     });
     // Send the email
     await transporter.sendMail(info);
-    console.log("Email sent!")
+    // console.log("Email sent!")
 }
 
 router.post('/send-otp', async (req, res) => {
@@ -109,7 +109,7 @@ router.post('/register', async (req, res) => {
 
         await deleteOtp(email);
 
-        console.log(`✅ Registered user: ${username}, ${email}`);
+        // console.log(`✅ Registered user: ${username}, ${email}`);
         res.status(200).json({ message: 'Registration successful!' });
 
     } catch (err) {
