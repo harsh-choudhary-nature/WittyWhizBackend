@@ -157,18 +157,22 @@ router.post('/login', async (req, res) => {
 });
 
 router.delete('/delete-account', async (req, res) => {
-    const { email } = req.body;
-
-    if (!email) return res.status(400).json({ message: 'Email is required' });
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Unauthorized: No token provided' });
+    }
+    const token = authHeader.split(' ')[1];
 
     try {
-        const user = await User.findOneAndDelete({ email });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findOneAndDelete({ email: decoded.email });
+
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         res.status(200).json({ message: 'Account deleted successfully' });
     } catch (err) {
         console.error('❌ Delete account error:', err);
-        res.status(500).json({ message: 'Server error while deleting account' });
+        return res.status(403).json({ message: 'Invalid or expired token' });
     }
 });
 
