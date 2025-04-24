@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
 
 
 const transporter = nodemailer.createTransport({
@@ -16,28 +17,32 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const otpStore = new Map();
 
 function generateOtp(length = 6) {
     return crypto.randomInt(0, 10 ** length).toString().padStart(length, '0');
 }
 
-function storeOtp(email, otp) {
-    otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 }); // expires in 5 min
+async function storeOtp(email, otp) {
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);  // 5 minutes expiration
+    await Otp.findOneAndUpdate(
+        { email },
+        { otp, expiresAt },
+        { upsert: true, new: true }
+    );
+
 }
 
-function getOtp(email) {
-    const entry = otpStore.get(email);
-    if (!entry) return null;
-    if (Date.now() > entry.expiresAt) {
-        otpStore.delete(email); // cleanup expired OTP
+async function getOtp(email) {
+    const entry = await Otp.findOne({ email });
+    if (!entry || new Date() > entry.expiresAt) {
+        await Otp.deleteOne({ email });
         return null;
     }
     return entry.otp;
 }
 
-function deleteOtp(email) {
-    otpStore.delete(email);
+async function deleteOtp(email) {
+    await Otp.deleteOne({ email });
 }
 
 async function sendOtpEmail(email, otp) {
