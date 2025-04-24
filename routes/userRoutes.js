@@ -5,6 +5,7 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
+const jwt = require('jsonwebtoken');
 
 
 const transporter = nodemailer.createTransport({
@@ -141,10 +142,13 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
 
-        // Optional: generate token
-        // const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(
+            { userId: user._id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
 
-        res.status(200).json({ message: 'Login successful', username: user.username  /*, token*/ });
+        res.status(200).json({ message: 'Login successful', username: user.username  , token });
 
     } catch (err) {
         console.error('❌ Login error:', err);
