@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Blog = require('../models/Blog');
 const User = require('../models/User');
+const authenticateToken = require('../middleware/auth');
+
 
 
 // Get blogs with pagination
@@ -23,7 +25,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.post('/create', async (req, res) => {
+router.post('/create', authenticateToken, async (req, res) => {
     try {
         const { title, keywords, content, email } = req.body;
         // console.log(`title : ${title}\nkeywords : ${keywords}\ncontent : ${content}\nemail : ${email}`);
