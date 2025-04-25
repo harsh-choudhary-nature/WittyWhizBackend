@@ -33,6 +33,7 @@ router.get('/', async (req, res) => {
 
         const formattedBlogs = blogs.map(blog => {
             return {
+                _id: blog._id.toString(),
                 title: blog.title,
                 content: blog.content,
                 keywords: blog.keywords,
@@ -106,6 +107,7 @@ router.get('/:id', async (req, res) => {
         const blog = await Blog.findById(req.params.id);
         if (!blog) return res.status(404).json({ message: 'Blog not found' });
         const response = {
+            _id: blog._id.toString(),
             title: blog.title,
             content: blog.content,
             keywords: blog.keywords,
