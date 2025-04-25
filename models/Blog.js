@@ -4,8 +4,6 @@ const blogSchema = new mongoose.Schema({
   title:     { type: String, required: true },
   content:   { type: String, required: true }, // Markdown content
   keywords:  [{ type: String }],
-  likes:     { type: Number, default: 0 },
-  dislikes:  { type: Number, default: 0 },
   author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -13,6 +11,9 @@ const blogSchema = new mongoose.Schema({
   },
   username:  { type: String, required: true },
   email:     { type: String, required: true },
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  dislikes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Blog', blogSchema);

@@ -37,8 +37,8 @@ router.get('/', async (req, res) => {
                 title: blog.title,
                 content: blog.content,
                 keywords: blog.keywords,
-                likes: blog.likes,
-                dislikes: blog.dislikes,
+                likes: blog.likes.length,
+                dislikes: blog.dislikes.length,
                 username: blog.username,
                 creator: userEmail && blog.email === userEmail
             };
@@ -74,8 +74,8 @@ router.post('/create', authenticateToken, async (req, res) => {
             email: user.email,
             username: user.username,
             author: user._id,
-            likes: 0,
-            dislikes: 0,
+            likes: [], // Initialize as empty array
+            dislikes: [] // Initialize as empty array
         });
 
         await newBlog.save();
@@ -90,6 +90,8 @@ router.post('/create', authenticateToken, async (req, res) => {
 // GET /api/blogs/:id
 router.get('/:id', async (req, res) => {
     let userEmail = null;
+    let userId = null;
+
 
     // Optional token decoding
     const authHeader = req.headers['authorization'];
@@ -98,6 +100,8 @@ router.get('/:id', async (req, res) => {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             userEmail = decoded.email;
+            const user = await User.findOne({ email: userEmail });
+            if (user) userId = user._id.toString();
         } catch (err) {
             console.warn('Invalid token — proceeding without user email');
         }
@@ -111,10 +115,12 @@ router.get('/:id', async (req, res) => {
             title: blog.title,
             content: blog.content,
             keywords: blog.keywords,
-            likes: blog.likes,
-            dislikes: blog.dislikes,
+            likes: blog.likes.length,
+            dislikes: blog.dislikes.length,
             username: blog.username,
-            creator: userEmail && blog.email === userEmail
+            creator: userEmail && blog.email === userEmail,
+            hasLiked: userEmail && blog.likes.some(id => id.toString() === userId),
+            hasDisliked: userEmail && blog.dislikes.some(id => id.toString() === userId)
         };
 
         res.json(response);
@@ -170,5 +176,63 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+
+// Like a blog
+router.post('/:id/like', authenticateToken, async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) return res.status(404).json({ message: 'Blog not found' });
+
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const userId = user._id.toString();
+    const alreadyLiked = blog.likes.includes(userId);
+    const alreadyDisliked = blog.dislikes.includes(userId);
+
+    if (alreadyLiked) {
+      blog.likes.pull(userId);
+    } else {
+      blog.likes.push(userId);
+      if (alreadyDisliked) blog.dislikes.pull(userId);
+    }
+
+    await blog.save();
+    res.json({ likes: blog.likes.length, dislikes: blog.dislikes.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating like status' });
+  }
+});
+
+// Dislike a blog
+router.post('/:id/dislike', authenticateToken, async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) return res.status(404).json({ message: 'Blog not found' });
+
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const userId = user._id.toString();
+    const alreadyDisliked = blog.dislikes.includes(userId);
+    const alreadyLiked = blog.likes.includes(userId);
+
+    if (alreadyDisliked) {
+      blog.dislikes.pull(userId);
+    } else {
+      blog.dislikes.push(userId);
+      if (alreadyLiked) blog.likes.pull(userId);
+    }
+
+    await blog.save();
+    res.json({ likes: blog.likes.length, dislikes: blog.dislikes.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating dislike status' });
+  }
+});
+
 
 module.exports = router;

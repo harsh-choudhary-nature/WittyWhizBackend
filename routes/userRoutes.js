@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
 const jwt = require('jsonwebtoken');
+const Blog = require('../models/Blog');
 
 
 const transporter = nodemailer.createTransport({
