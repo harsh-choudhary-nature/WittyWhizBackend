@@ -168,8 +168,11 @@ router.delete('/delete-account', async (req, res) => {
         const user = await User.findOneAndDelete({ email: decoded.email });
 
         if (!user) return res.status(404).json({ message: 'User not found' });
-
-        res.status(200).json({ message: 'Account deleted successfully' });
+        
+        // Delete all blogs by this user
+        await Blog.deleteMany({ email: decoded.email });
+        
+        res.status(200).json({ message: 'Account and all associated blogs deleted successfully' });
     } catch (err) {
         console.error('❌ Delete account error:', err);
         return res.status(403).json({ message: 'Invalid or expired token' });
