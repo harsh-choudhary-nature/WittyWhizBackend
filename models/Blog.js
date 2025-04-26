@@ -16,4 +16,12 @@ const blogSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+/* ⭐ Add this text index */
+blogSchema.index({
+  title: 'text',
+  content: 'text',
+  keywords: 'text',
+  username: 'text',
+});
+
 module.exports = mongoose.model('Blog', blogSchema);

@@ -8,7 +8,7 @@ const authenticateToken = require('../middleware/auth');
 
 // Get blogs with pagination
 router.get('/', async (req, res) => {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search = '' } = req.query;
     let userEmail = null;
     // Extract email from token if present
     const authHeader = req.headers['authorization'];
@@ -23,10 +23,16 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const blogs = await Blog.find()
-            .sort({ createdAt: -1 }) // Sort blogs by creation date (newest first)
+        const query = {};
+        // ⭐ If search term exists, apply MongoDB text search
+        if (search.trim() !== '') {
+            query.$text = { $search: search.trim(), $caseSensitive: false };
+        }
+        const blogs = await Blog.find(query)
+            .sort({ createdAt: -1 }) // Sort by text search score and creation date
             .skip((page - 1) * limit)
-            .limit(Number(limit));
+            .limit(Number(limit))
+            .collation({ locale: 'en', strength: 2 }); // Collation for case-insensitive search
 
         const totalBlogs = await Blog.countDocuments(); // Total blog count for pagination
         const totalPages = Math.ceil(totalBlogs / limit); // Calculate total pages
@@ -180,58 +186,58 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 // Like a blog
 router.post('/:id/like', authenticateToken, async (req, res) => {
-  try {
-    const blog = await Blog.findById(req.params.id);
-    if (!blog) return res.status(404).json({ message: 'Blog not found' });
+    try {
+        const blog = await Blog.findById(req.params.id);
+        if (!blog) return res.status(404).json({ message: 'Blog not found' });
 
-    const user = await User.findOne({ email: req.user.email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+        const user = await User.findOne({ email: req.user.email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const userId = user._id.toString();
-    const alreadyLiked = blog.likes.includes(userId);
-    const alreadyDisliked = blog.dislikes.includes(userId);
+        const userId = user._id.toString();
+        const alreadyLiked = blog.likes.includes(userId);
+        const alreadyDisliked = blog.dislikes.includes(userId);
 
-    if (alreadyLiked) {
-      blog.likes.pull(userId);
-    } else {
-      blog.likes.push(userId);
-      if (alreadyDisliked) blog.dislikes.pull(userId);
+        if (alreadyLiked) {
+            blog.likes.pull(userId);
+        } else {
+            blog.likes.push(userId);
+            if (alreadyDisliked) blog.dislikes.pull(userId);
+        }
+
+        await blog.save();
+        res.json({ likes: blog.likes.length, dislikes: blog.dislikes.length });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating like status' });
     }
-
-    await blog.save();
-    res.json({ likes: blog.likes.length, dislikes: blog.dislikes.length });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error updating like status' });
-  }
 });
 
 // Dislike a blog
 router.post('/:id/dislike', authenticateToken, async (req, res) => {
-  try {
-    const blog = await Blog.findById(req.params.id);
-    if (!blog) return res.status(404).json({ message: 'Blog not found' });
+    try {
+        const blog = await Blog.findById(req.params.id);
+        if (!blog) return res.status(404).json({ message: 'Blog not found' });
 
-    const user = await User.findOne({ email: req.user.email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+        const user = await User.findOne({ email: req.user.email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const userId = user._id.toString();
-    const alreadyDisliked = blog.dislikes.includes(userId);
-    const alreadyLiked = blog.likes.includes(userId);
+        const userId = user._id.toString();
+        const alreadyDisliked = blog.dislikes.includes(userId);
+        const alreadyLiked = blog.likes.includes(userId);
 
-    if (alreadyDisliked) {
-      blog.dislikes.pull(userId);
-    } else {
-      blog.dislikes.push(userId);
-      if (alreadyLiked) blog.likes.pull(userId);
+        if (alreadyDisliked) {
+            blog.dislikes.pull(userId);
+        } else {
+            blog.dislikes.push(userId);
+            if (alreadyLiked) blog.likes.pull(userId);
+        }
+
+        await blog.save();
+        res.json({ likes: blog.likes.length, dislikes: blog.dislikes.length });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating dislike status' });
     }
-
-    await blog.save();
-    res.json({ likes: blog.likes.length, dislikes: blog.dislikes.length });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error updating dislike status' });
-  }
 });
 
 
